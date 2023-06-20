@@ -37,6 +37,7 @@ def count_words_characters(file_path) -> list:
     try:
         with open(file_path, "r") as file:
             full_content = file.read()
+            full_content = full_content.rstrip("\n")
     except FileExistsError as error_1:
         print(colored(f"First Line= {error_1}", "red"))
         sys.exit(error_1.errno)
@@ -74,9 +75,8 @@ def evaluation(canditat_par: dict, ori: list):
     canditat_par["accuracy"] = ((total_char - errors) / total_char) * 100
 
 
-def canditats_evaluation(canditats_list:list, ori_infos_par):
+def print_list(canditats_list:list)->None: 
     for canditat in canditats_list:
-        evaluation(canditat_par=canditat, ori=ori_infos_par)
         id = canditat["ID"]
         nbr_char = canditat["characters"]
         nbr_word = canditat["words"]
@@ -86,24 +86,58 @@ def canditats_evaluation(canditats_list:list, ori_infos_par):
         acc = canditat["accuracy"]
         print(f"| ID: {id} | number of chars: {nbr_char} | number of words: {nbr_word} | number of errors: {ew} | gross wpm: {gw:.1f} | net wpm: {nw:.1f} | accuracy: {acc:.2f}")
 
+def canditats_evaluation(canditats_list:list, ori_infos_par):
+    for canditat in canditats_list:
+        evaluation(canditat_par=canditat, ori=ori_infos_par)
+    print_list(canditats_list=canditats_list)
 
-def canditats_ranking(participants:dict) -> list:
+def canditats_ranking(participants:list, new_list:list) -> None:
     """The ranking i based on the "net wpm" values, with higher values indicating a better typing speed taking into account the number of errors made.
 
     Args:
-        participants (dict): list of participants
-
-    Returns:
-        list: a ordered List of participants ID
+        participants (list): Unordered list
+        new_list (list): ordered list
     """
-    last_canditat = 0
-    list_nw = []
-    for canditat in participants: 
-        list_nw.append(canditat["net_wpm"])
-    list_nw.sort
-    
+    # This implementation is based on the insertion sort algorithm
+    new_list = participants
+    for index in range(1, len(new_list)): 
+        key_canditat = new_list[index] # actual element to insert in the sub-list ordered
+        key = new_list[index]["net_wpm"] 
+        sub_index = index - 1 # index of the previous element in the ordered sub-list  
+
+        # move the elements of the sub-list ordered, that are bigger than the key
+        # to the right in order to insert the key
+        while sub_index >= 0 and new_list[sub_index]["net_wpm"] > key: 
+            new_list[sub_index + 1 ] = new_list[sub_index]
+            sub_index -= 1 
+        
+        # insert the key a the right position in the ordered sub-list
+        new_list[sub_index + 1] = key_canditat
+    print("******************** Ranking **********************************")
+    print_list(canditats_list=new_list)
 
 
+def write_to_file(canditats_list:list)->None: 
+    try:
+        with open(ergebnis_path, "a") as file:
+            file.write("************** Round start*********************** \n")
+            for canditat in canditats_list:
+                id = canditat["ID"]
+                nbr_char = canditat["characters"]
+                nbr_word = canditat["words"]
+                ew = canditat["errors"]
+                gw = canditat["gross_wpm"]
+                nw = canditat["net_wpm"]
+                acc = canditat["accuracy"]
+                file.write(f"| ID: {id} | number of chars: {nbr_char} | number of words: {nbr_word} | number of errors: {ew} | gross wpm: {gw:.1f} | net wpm: {nw:.1f} | accuracy: {acc:.2f}\n")
+            file.write("************** Round Finish***********************\n")
+            file.write("\n\n")
+    except FileExistsError as error_1:
+        print(colored(f"First Line= {error_1}", "red"))
+        sys.exit(error_1.errno)
+    except FileNotFoundError as error_2:
+        print(colored(f"First Line= {error_2}", "red"))
+        sys.exit(error_2.errno)
 
 if __name__ == "__main__":
     print("")
@@ -112,6 +146,7 @@ if __name__ == "__main__":
     # Get list of participants
     list_parts_file = participats_list()
     list_parts = []
+    ranking_list = []
     # Extract canditate information
     for canditat in list_parts_file:
         participant = {"ID": "", "characters": 0, "words": 0, "errors": 0,
@@ -122,3 +157,7 @@ if __name__ == "__main__":
     # Evaluate each Canditat
     canditats_evaluation(canditats_list=list_parts, ori_infos_par=ori_infos)
     # Ranking
+    canditats_ranking(participants=list_parts, new_list=ranking_list)
+    # Output to file
+    write_to_file(canditats_list=list_parts)
+    
